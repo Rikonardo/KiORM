@@ -1,0 +1,23 @@
+package com.rikonardo.kiorm.queries.parts.where;
+
+import com.rikonardo.kiorm.queries.AbstractQueryWhere;
+import lombok.AllArgsConstructor;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@AllArgsConstructor
+public class QueryWhereIn extends AbstractQueryWhere {
+    private final String field;
+    private final List<Object> values;
+
+    @Override
+    public String compile() {
+        return "`" + field + "` IN (" + values.stream().map((val) -> "?").collect(Collectors.joining(", ")) + ")";
+    }
+
+    @Override
+    public List<Object> compileValues() {
+        return values;
+    }
+}

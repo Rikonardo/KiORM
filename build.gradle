@@ -1,0 +1,62 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+}
+
+group 'com.rikonardo.kiorm'
+version '1.0.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+    // Lombok
+    compileOnly 'org.projectlombok:lombok:1.18.22'
+    annotationProcessor 'org.projectlombok:lombok:1.18.22'
+
+    testCompileOnly 'org.projectlombok:lombok:1.18.22'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.22'
+    // DB driver
+    implementation 'mysql:mysql-connector-java:8.0.25'
+}
+
+def targetJavaVersion = 8
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifactId = 'KiORM'
+            from components.java
+            pom {
+                name = 'KiORM'
+                description = 'Simple MySQL DB library'
+            }
+        }
+
+    }
+    repositories {
+        maven {
+            name 'deploy'
+            url deployRepoUrl
+            credentials {
+                username = deployRepoUsername
+                password = deployRepoPassword
+            }
+        }
+    }
+}
