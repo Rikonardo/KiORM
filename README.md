@@ -93,7 +93,7 @@ There is another way to connect to the database:
 class Main {
     public static void main(String[] args) {
         KiORM database = new KiORM();
-        database.setConnectionUrl("jdbc:mysql://root@127.0.0.1:3306/dbname");
+        database.connect("jdbc:mysql://root@127.0.0.1:3306/dbname");
     }
 }
 ````

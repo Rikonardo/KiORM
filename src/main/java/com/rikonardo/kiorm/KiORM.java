@@ -20,10 +20,10 @@ public class KiORM {
     @Setter private DocumentParser.NameModifier fieldNameModifier = null;
 
     public KiORM(String jdbcString) throws SQLException {
-        this.connection = DriverManager.getConnection(jdbcString);
+        this.connect(jdbcString);
     }
 
-    public void setConnectionUrl(String jdbcString) throws SQLException {
+    public void connect(String jdbcString) throws SQLException {
         if (this.connection != null) this.connection.close();
         this.connection = DriverManager.getConnection(jdbcString);
     }
