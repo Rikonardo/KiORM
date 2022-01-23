@@ -1,6 +1,7 @@
 package com.rikonardo.kiorm.queries.builders;
 
 import com.rikonardo.kiorm.KiORM;
+import com.rikonardo.kiorm.exceptions.InvalidDocumentClassException;
 import com.rikonardo.kiorm.exceptions.InvalidQueryException;
 import com.rikonardo.kiorm.exceptions.RuntimeSQLException;
 import com.rikonardo.kiorm.serialization.DocumentParser;
@@ -29,6 +30,8 @@ public class DeleteBuilder<T> {
         try {
             DocumentSchema<T> schema = (DocumentSchema<T>) DocumentParser.schema(this.target.getClass(), this.tableNameModifier, this.fieldNameModifier);
             Map<String, Object> keys = schema.mapKeysOnly(this.target);
+            if (keys.size() == 0)
+                throw new InvalidDocumentClassException("Document must have primary key in order to be used in delete operations");
             String query = "DELETE FROM `" + schema.getTable() + "` WHERE " +
                     keys.keySet().stream().map(k -> "`" + k + "` = ?").collect(Collectors.joining(", ")) + ";";
 
