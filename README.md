@@ -1,4 +1,4 @@
-# KiORM - Simple and powerful MySQL library for tiny projects
+# KiORM - Simple and powerful MySQL Java library for tiny projects
 
 > Notice: KiORM is still in SNAPSHOT state. The code is not tested, there is no Javadoc, the API may change unexpectedly. If that doesn't bother you, welcome! 😎
 
@@ -53,7 +53,7 @@ If you are using it in Minecraft plugin, you can just shade this library into yo
 | Content                                                         |
 |-----------------------------------------------------------------|
 | **1. [Basic usage](#basic-usage)**                              |
-| **2. [SQL closures](#sql-closures)**                            |
+| **2. [SQL clauses](#sql-clauses)**                              |
 | **3. [Computed fields](#computed-fields)**                      |
 | **4. [Serializer classes](#serializer-classes)**                |
 | **5. [Creating tables](#creating-tables)**                      |
@@ -72,6 +72,7 @@ class Player {
     @Field("name") public String name;
     @Field("score") public int score;
 }
+
 class Main {
     public static void main(String[] args) {
         // Connecting to database
@@ -87,14 +88,24 @@ class Main {
     }
 }
 ```
-But in the most time, we would want to have unique ID for every object in our database. It is pretty easy to do, just add numeric field with two additional annotations:
+There is another way to connect to the database:
+```java
+class Main {
+    public static void main(String[] args) {
+        KiORM database = new KiORM();
+        database.setConnectionUrl("jdbc:mysql://root@127.0.0.1:3306/dbname");
+    }
+}
+````
+In the most time, we would want to have unique ID for every object in our database. It is pretty easy to do, just add numeric field with two additional annotations:
 ```java
 @Document("players")
 class Player {
-    @Field("id") @PrimaryKey @AutoIncrement public float id;
+    @Field("id") @PrimaryKey @AutoIncrement public long id;
     @Field("name") public String name;
     @Field("score") public int score;
 }
+
 class Main {
     public static void main(String[] args) {
         KiORM database = new KiORM("jdbc:mysql://root@127.0.0.1:3306/dbname");
@@ -111,16 +122,16 @@ class Main {
     }
 }
 ```
-Notice, that @PrimaryKey can be used without `@AutoIncrement`, but `@AutoIncrement` requires `@PrimaryKey` to be set on field.
+Notice, that `@PrimaryKey` can be used without `@AutoIncrement`, but `@AutoIncrement` requires `@PrimaryKey` to be set on field.
 You can also use a composite primary key by specifying `@PrimaryKey` on multiple fields.
 
 List of supported field types and their SQL names: `String` (TEXT), `boolean` (BOOLEAN), `byte` (TINYINT), `short` (SMALLINT), `int` (INT), `long` (BIGINT), `float` (FLOAT), `double` (DOUBLE), `byte[]` (BLOB).
 
-> Important: KiORM only serializes fields marked with `@Field`. Even if field is private, KiORM will access it, so you don't need to think about how access modifiers affects data mapping.
+**❗ Important: KiORM only serializes fields marked with `@Field`. Even if field is private, KiORM will access it, so you don't need to think about how access modifiers affects data mapping.**
 
-> Important: KiORM requires document class to have public no-args constructor in order to be used in SELECT queries. By default, java implicitly creates it for you, but when you create your own constructor, the implicit one disappears, and you need to add it manually by writing `public ClassName() {}`.
+**❗ Important: KiORM requires document class to have public no-args constructor in order to be used in SELECT queries. By default, java implicitly creates it for you, but when you create your own constructor, the implicit one disappears, and you need to add it manually by writing `public ClassName() {}`.**
 
-### SQL closures
+### SQL clauses
 KiORM provides pretty simple java api for Where, OrderBy, etc. clauses. Here is an example:
 ```java
 class Main {
@@ -128,9 +139,9 @@ class Main {
         KiORM database = new KiORM("jdbc:mysql://root@127.0.0.1:3306/dbname");
         // Getting list of players, which score is >= 100
         List<Player> players = database
-                .select(Player.class)
-                .where(Where.gte("score", 100))
-                .exec();
+            .select(Player.class)
+            .where(Where.gte("score", 100))
+            .exec();
     }
 }
 ```
@@ -188,24 +199,24 @@ Sometimes we need to go beyond primitive types and store something more complica
 ```java
 @Document("items")
 class Item {
-    @Field("id") @PrimaryKey @AutoIncrement public float id;
+    @Field("id") @PrimaryKey @AutoIncrement public long id;
     @Field("type") public String type;
     @Field("durability") public int durability;
-    
+
     public Player owner;
 
     @Field("owner")
     private String getPlayerId() {
         return this.owner.getUUID();
     }
-    
+
     @Field("owner")
     private void setPlayerId(String uuid) {
         this.owner = Player.fromUUID(uuid);
     }
 }
 ```
-This code allows you to interact only with real Player instance, while in stored as uuid string. `getPlayerId` and `setPlayerId` are private, so they won't distract you during development.
+This code allows you to interact only with real Player instance, while it stored as uuid string. `getPlayerId` and `setPlayerId` are private, so they won't distract you during development.
 
 Computed fields always consists of two methods - a getter and a setter, returning/accepting one of the values, supported by the database (unless you use `@Serializer` along with a computed field, but more on that later).
 
@@ -221,7 +232,7 @@ class Item {
     private long getPlayerId() {
         return this.id.getAsLong();
     }
-    
+
     @Field("id")
     private void setPlayerId(long id) {
         this.id = new CoolIdClass(id);
@@ -270,17 +281,17 @@ Sometimes we need to specify table name in runtime (for example get it from conf
 class Main {
     public static void main(String[] args) {
         Map<Class<?>, String> tablesPrefixes = new HashMap<>();
-        tables.put(Items.class, "new_");
-        
+        tablesPrefixes.put(Item.class, "new_");
+
         KiORM database = new KiORM("jdbc:mysql://root@127.0.0.1:3306/dbname");
-        database.setTableNameModifier((name, type) -> tables.get(type) + name);
+        database.setTableNameModifier((name, type) -> tablesPrefixes.get(type) + name);
         database.createTableIfNotExist(Items.class); // Will create table with name "new_items"
     }
 }
 ```
 There is absolutely same way for modifying field names (`database.setFieldNameModifier((name, type) -> ...)`).
 
-> Important: Due to schema caching, this lambda will be invoked only once. If you need to update table names, you can clear cache by calling `KiORM.clearSchemaCache()`
+**❗ Important: Due to schema caching, this lambda will be invoked only once. If you need to update table names, you can clear cache by calling `KiORM.clearSchemaCache()`**
 
 ### Schema caching
 By default, KiORM caches schemas after first parsing. The cache key consists of three things - the document class, the tableNameModifier lambda, and the fieldNameModifier lambda.
@@ -297,15 +308,15 @@ KiORM was designed to be used with [Lombok](https://projectlombok.org). You don'
 @Document("items")
 class Item {
     @Getter @PrimaryKey @AutoIncrement @Field("id") private long id; // ID without setter
-    
+
     @Getter @Setter @Field("durability") private float durability;
-    
+
     @Getter @Setter @Field("count") private int count;
-    
+
     @Getter @Setter @Field("rarity") private int rarity;
-    
+
     @Getter @Setter @Field("name") private String name;
-    
+
     @Serializer(PlayerIdSerializer.class)
     @Getter @Setter @Field("owner") private Player owner;
 }
