@@ -34,11 +34,11 @@ public class DocumentSchema<T> {
         }
     }
 
-    public Map<String, Object> toMapNoKeys(T instance) {
+    public Map<String, Object> mapWithoutId(T instance) {
         try {
             Map<String, Object> map = new HashMap<>();
             for (DocumentParser.DocumentField field : fields)
-                if (!field.isPrimaryKey())
+                if (!field.isAutoIncrement())
                     map.put(field.getName(), field.getSerializer().serialize(field.read(instance)));
             return map;
         } catch (InvocationTargetException | IllegalAccessException e) {
@@ -61,7 +61,7 @@ public class DocumentSchema<T> {
         }
     }
 
-    public Map<String, Object> toMapKeys(T instance) {
+    public Map<String, Object> mapKeysOnly(T instance) {
         try {
             Map<String, Object> map = new HashMap<>();
             for (DocumentParser.DocumentField field : fields)

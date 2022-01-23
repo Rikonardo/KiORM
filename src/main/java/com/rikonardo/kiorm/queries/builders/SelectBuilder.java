@@ -25,7 +25,7 @@ public class SelectBuilder<T> {
 
     private AbstractQueryWhere where;
     private AbstractQueryOrder order;
-    private int limitShift = -1, limitCount = -1;
+    private int limitSkip = -1, limitCount = -1;
 
     public SelectBuilder(KiORM db, Class<T> target, DocumentParser.NameModifier tableNameModifier, DocumentParser.NameModifier fieldNameModifier) {
         this.db = db;
@@ -50,13 +50,13 @@ public class SelectBuilder<T> {
     }
 
     public SelectBuilder<T> limit(int count) {
-        this.limitShift = -1;
+        this.limitSkip = -1;
         this.limitCount = count;
         return this;
     }
 
-    public SelectBuilder<T> limit(int shift, int count) {
-        this.limitShift = shift;
+    public SelectBuilder<T> limit(int skip, int count) {
+        this.limitSkip = skip;
         this.limitCount = count;
         return this;
     }
@@ -73,8 +73,8 @@ public class SelectBuilder<T> {
             if (this.order != null) {
                 query += " ORDER BY " + this.order.compile();
             }
-            if (this.limitShift >= 0) {
-                query += " LIMIT " + this.limitShift + ", " + this.limitCount;
+            if (this.limitSkip >= 0) {
+                query += " LIMIT " + this.limitSkip + ", " + this.limitCount;
             } else if (this.limitCount >= 0) {
                 query += " LIMIT " + this.limitCount;
             }

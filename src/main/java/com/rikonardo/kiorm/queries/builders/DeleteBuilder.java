@@ -28,7 +28,7 @@ public class DeleteBuilder<T> {
     public int exec() {
         try {
             DocumentSchema<T> schema = (DocumentSchema<T>) DocumentParser.schema(this.target.getClass(), this.tableNameModifier, this.fieldNameModifier);
-            Map<String, Object> keys = schema.toMapKeys(this.target);
+            Map<String, Object> keys = schema.mapKeysOnly(this.target);
             String query = "DELETE FROM `" + schema.getTable() + "` WHERE " +
                     keys.keySet().stream().map(k -> "`" + k + "` = ?").collect(Collectors.joining(", ")) + ";";
 

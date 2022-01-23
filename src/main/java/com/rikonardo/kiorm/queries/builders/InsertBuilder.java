@@ -30,7 +30,7 @@ public class InsertBuilder<T> {
     public int exec() {
         try {
             DocumentSchema<T> schema = (DocumentSchema<T>) DocumentParser.schema(this.target.getClass(), this.tableNameModifier, this.fieldNameModifier);
-            Map<String, Object> fields = schema.toMapNoKeys(this.target);
+            Map<String, Object> fields = schema.mapWithoutId(this.target);
             String query = "INSERT INTO `" + schema.getTable() + "` (" +
                     fields.keySet().stream().map(k -> "`" + k + "`").collect(Collectors.joining(", ")) + ") VALUES (" +
                     fields.keySet().stream().map(k -> "?").collect(Collectors.joining(", ")) + ");";
