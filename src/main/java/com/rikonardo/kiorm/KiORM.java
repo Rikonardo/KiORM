@@ -19,17 +19,25 @@ public class KiORM {
     @Setter private DocumentParser.NameModifier tableNameModifier = null;
     @Setter private DocumentParser.NameModifier fieldNameModifier = null;
 
-    public KiORM(String jdbcString) throws SQLException {
+    public KiORM(String jdbcString) {
         this.connect(jdbcString);
     }
 
-    public void connect(String jdbcString) throws SQLException {
-        if (this.connection != null) this.connection.close();
-        this.connection = DriverManager.getConnection(jdbcString);
+    public void connect(String jdbcString) {
+        try {
+            if (this.connection != null) this.connection.close();
+            this.connection = DriverManager.getConnection(jdbcString);
+        } catch (SQLException e) {
+            throw new RuntimeSQLException(e);
+        }
     }
 
-    public void close() throws SQLException {
-        connection.close();
+    public void close() {
+        try {
+            connection.close();
+        } catch (SQLException e) {
+            throw new RuntimeSQLException(e);
+        }
     }
 
     public <T> SelectBuilder<T> select(Class<T> target) {
