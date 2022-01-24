@@ -38,7 +38,7 @@ public class InsertBuilder<T> {
             PreparedStatement preparedStatement = db.getConnection().prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
             int i = 1;
             for (String key : fields.keySet()) {
-                SupportedTypes.SupportedType type = SupportedTypes.getFieldType(fields.get(key).getClass());
+                SupportedTypes.SupportedType type = schema.getFieldType(key);
                 if (type == null) throw new InvalidQueryException("Query contains value of unsupported type " + fields.get(key).getClass().getName());
                 type.write(preparedStatement, i, fields.get(key));
                 i++;

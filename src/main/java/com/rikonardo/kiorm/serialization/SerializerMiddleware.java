@@ -1,5 +1,6 @@
 package com.rikonardo.kiorm.serialization;
 
+import com.rikonardo.kiorm.annotations.Fixed;
 import com.rikonardo.kiorm.annotations.Serializer;
 import com.rikonardo.kiorm.exceptions.InvalidDocumentClassException;
 
@@ -11,13 +12,15 @@ public class SerializerMiddleware {
     private final Class<?> storageType;
     private final SupportedTypes.SupportedType supportedStorageType;
     private final Object serializerInstance;
+    private final Class<? extends FieldSerializer<?, ?>> serializerClass;
     private final Method deserialize, serialize;
 
-    public SerializerMiddleware(Class<?> realType, Serializer serializer) {
-        this(realType, serializer == null ? null : serializer.value());
+    public SerializerMiddleware(Class<?> realType, Serializer serializer, Fixed fixed) {
+        this(realType, serializer == null ? null : serializer.value(), fixed);
     }
 
-    public SerializerMiddleware(Class<?> realType, Class<? extends FieldSerializer<?, ?>> serializer) {
+    public SerializerMiddleware(Class<?> realType, Class<? extends FieldSerializer<?, ?>> serializer, Fixed fixed) {
+        this.serializerClass = serializer;
         this.realType = realType;
         if (serializer == null) {
             this.storageType = this.realType;
@@ -36,7 +39,7 @@ public class SerializerMiddleware {
                     if (
                         m.getName().equals(realM.getName()) &&
                         realM.getParameterTypes().length == 1 &&
-                        SupportedTypes.getFieldType(realM.getReturnType()) != null &&
+                        SupportedTypes.getFieldType(realM.getReturnType(), fixed) != null &&
                         (
                             realM.getParameterTypes()[0].isAssignableFrom(this.realType) ||
                             SupportedTypes.checkPrimitiveObjectTypesPair(this.realType, realM.getParameterTypes()[0])
@@ -67,12 +70,16 @@ public class SerializerMiddleware {
             this.deserialize = deserialize;
             this.serialize = serialize;
         }
-        this.supportedStorageType = SupportedTypes.getFieldType(this.storageType);
+        this.supportedStorageType = SupportedTypes.getFieldType(this.storageType, fixed);
         if (this.supportedStorageType == null) throw new InvalidDocumentClassException("Field type " + this.storageType.getName() + " is not supported");
     }
 
     public boolean hasSerializer() {
         return this.serializerInstance != null;
+    }
+
+    public Class<? extends FieldSerializer<?, ?>> getSerializerClass() {
+        return serializerClass;
     }
 
     public Class<?> getRealType() {

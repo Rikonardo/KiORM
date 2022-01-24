@@ -72,4 +72,11 @@ public class DocumentSchema<T> {
             throw new RuntimeException(e);
         }
     }
+
+    public SupportedTypes.SupportedType getFieldType(String name) {
+        for (DocumentParser.DocumentField field : fields)
+            if (field.getName().equals(name))
+                return field.getSerializer().getStorageType();
+        return null;
+    }
 }

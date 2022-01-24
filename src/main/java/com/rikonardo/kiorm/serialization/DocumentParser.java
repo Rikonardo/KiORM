@@ -1,9 +1,6 @@
 package com.rikonardo.kiorm.serialization;
 
-import com.rikonardo.kiorm.annotations.AutoIncrement;
-import com.rikonardo.kiorm.annotations.Document;
-import com.rikonardo.kiorm.annotations.PrimaryKey;
-import com.rikonardo.kiorm.annotations.Serializer;
+import com.rikonardo.kiorm.annotations.*;
 import com.rikonardo.kiorm.exceptions.InvalidDocumentClassException;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -49,7 +46,7 @@ public class DocumentParser {
             boolean isPrimaryKey = classField.getAnnotation(PrimaryKey.class) != null;
             boolean isAutoIncrement = classField.getAnnotation(AutoIncrement.class) != null;
             if (isAutoIncrement && !isPrimaryKey) throw new InvalidDocumentClassException("@AutoIncrement used without @PrimaryKey at field " + fieldName);
-            fields.add(new StandardDocumentField(fieldName, new SerializerMiddleware(classField.getType(), classField.getAnnotation(Serializer.class)), isPrimaryKey, isAutoIncrement, classField));
+            fields.add(new StandardDocumentField(fieldName, new SerializerMiddleware(classField.getType(), classField.getAnnotation(Serializer.class), classField.getAnnotation(Fixed.class)), isPrimaryKey, isAutoIncrement, classField));
         }
 
         Method[] classMethods = clazz.getDeclaredMethods();
@@ -74,7 +71,7 @@ public class DocumentParser {
             if (field == null) {
                 boolean isPrimaryKey = classMethod.getAnnotation(PrimaryKey.class) != null;
                 boolean isAutoIncrement = classMethod.getAnnotation(AutoIncrement.class) != null;
-                ComputedDocumentField cfield = new ComputedDocumentField(fieldName, new SerializerMiddleware(type, classMethod.getAnnotation(Serializer.class)), isPrimaryKey, isAutoIncrement);
+                ComputedDocumentField cfield = new ComputedDocumentField(fieldName, new SerializerMiddleware(type, classMethod.getAnnotation(Serializer.class), classMethod.getAnnotation(Fixed.class)), isPrimaryKey, isAutoIncrement);
                 if (isSetter) cfield.setSetter(classMethod);
                 else cfield.setGetter(classMethod);
                 fields.add(cfield);
@@ -90,8 +87,13 @@ public class DocumentParser {
                     if (cfield.getGetter() != null) throw new InvalidDocumentClassException("Getter for field " + fieldName + " specified twice");
                     cfield.setGetter(classMethod);
                 }
-                if (!cfield.getSerializer().hasSerializer() && classMethod.getAnnotation(Serializer.class) != null) {
-                    cfield.setSerializer(new SerializerMiddleware(type, classMethod.getAnnotation(Serializer.class)));
+                Serializer serializer = classMethod.getAnnotation(Serializer.class);
+                Fixed fixed = classMethod.getAnnotation(Fixed.class);
+                if (
+                    !cfield.getSerializer().hasSerializer() && serializer != null ||
+                    !cfield.getSerializer().getStorageType().isFixed() && fixed != null
+                ) {
+                    cfield.setSerializer(new SerializerMiddleware(type, serializer != null ? serializer.value() : cfield.getSerializer().getSerializerClass(), fixed != null ? fixed : (cfield.getSerializer().getStorageType().isFixed() ? ((SupportedTypes.FixedSupportedType) cfield.getSerializer().getStorageType()).getFixedAnnotation() : null)));
                 }
             }
         }

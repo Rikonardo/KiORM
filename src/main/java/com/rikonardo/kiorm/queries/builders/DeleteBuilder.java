@@ -38,7 +38,7 @@ public class DeleteBuilder<T> {
             PreparedStatement preparedStatement = db.getConnection().prepareStatement(query);
             int i = 1;
             for (String key : keys.keySet()) {
-                SupportedTypes.SupportedType type = SupportedTypes.getFieldType(keys.get(key).getClass());
+                SupportedTypes.SupportedType type = schema.getFieldType(key);
                 if (type == null) throw new InvalidQueryException("Query contains value of unsupported type " + keys.get(key).getClass().getName());
                 type.write(preparedStatement, i, keys.get(key));
                 i++;

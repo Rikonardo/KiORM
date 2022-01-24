@@ -83,7 +83,7 @@ public class SelectBuilder<T> {
             PreparedStatement preparedStatement = db.getConnection().prepareStatement(query);
             int i = 1;
             for (Object value : values) {
-                SupportedTypes.SupportedType type = SupportedTypes.getFieldType(value.getClass());
+                SupportedTypes.SupportedType type = SupportedTypes.getAnyFieldType(value.getClass());
                 if (type == null) throw new InvalidQueryException("Query contains value of unsupported type " + value.getClass().getName());
                 type.write(preparedStatement, i, value);
                 i++;
