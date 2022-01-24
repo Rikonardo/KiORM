@@ -50,17 +50,19 @@ If you are using it in Minecraft plugin, you can just shade this library into yo
 
 ## Documentation
 
-| Content                                                         |
-|-----------------------------------------------------------------|
-| **1. [Basic usage](#basic-usage)**                              |
-| **2. [SQL clauses](#sql-clauses)**                              |
-| **3. [Computed fields](#computed-fields)**                      |
-| **4. [Serializer classes](#serializer-classes)**                |
-| **5. [Creating tables](#creating-tables)**                      |
-| **6. [Raw SQL queries](#raw-sql-queries)**                      |
-| **7. [Table/Field name modifiers](#tablefield-name-modifiers)** |
-| **8. [Schema caching](#schema-caching)**                        |
-| **9. [Usage with Lombok](#usage-with-lombok)**                  |
+| Content                                                                                     |
+|---------------------------------------------------------------------------------------------|
+| **1. [Basic usage](#basic-usage)**                                                          |
+| **2. [SQL clauses](#sql-clauses)**                                                          |
+| **3. [Computed fields](#computed-fields)**                                                  |
+| **4. [Serializer classes](#serializer-classes)**                                            |
+| **5. [Exceptions](#exceptions)**                                                            |
+| **6. [Creating tables](#creating-tables)**                                                  |
+| **7. [Raw SQL queries](#raw-sql-queries)**                                                  |
+| **8. [Fixed types and binary/text primary keys](#fixed-types-and-binarytext-primary-keys)** |
+| **9. [Table/Field name modifiers](#tablefield-name-modifiers)**                             |
+| **10. [Schema caching](#schema-caching)**                                                   |
+| **11. [Usage with Lombok](#usage-with-lombok)**                                             |
 
 ### Basic usage
 Interact with database is as easy as write:
@@ -125,7 +127,7 @@ class Main {
 Notice, that `@PrimaryKey` can be used without `@AutoIncrement`, but `@AutoIncrement` requires `@PrimaryKey` to be set on field.
 You can also use a composite primary key by specifying `@PrimaryKey` on multiple fields.
 
-List of supported field types and their SQL names: `String` (TEXT), `boolean` (BOOLEAN), `byte` (TINYINT), `short` (SMALLINT), `int` (INT), `long` (BIGINT), `float` (FLOAT), `double` (DOUBLE), `byte[]` (BLOB).
+List of supported field types and their SQL names: `String` (TEXT), `boolean` (BOOLEAN), `byte` (TINYINT), `short` (SMALLINT), `int` (INT), `long` (BIGINT), `float` (FLOAT), `double` (DOUBLE), `byte[]` (BLOB). There are also two fixed types, but more on that later.
 
 **❗ Important: KiORM only serializes fields marked with `@Field`. Even if field is private, KiORM will access it, so you don't need to think about how access modifiers affects data mapping.**
 
@@ -193,6 +195,8 @@ class Main {
     }
 }
 ```
+
+**❗ Important: KiORM currently does not serialize values, passed to `.where()` clause. It also does not apply field name modifier to field names, passed to `.where()` and `.order()` clauses. You need to serialize values and apply name modifiers by yourself.**
 
 ### Computed fields
 Sometimes we need to go beyond primitive types and store something more complicated, like JSON or player UUID. KiORM provides two different way to achieve this, and computed fields is the first one.
@@ -268,12 +272,49 @@ class Item {
 ```
 As you see, we are using `Long` instead of `long` here. KiORM would automatically care about object <-> primitive converting.
 
+### Exceptions
+
+| KiORM provides three exceptions: `InvalidDocumentClassException`, `InvalidQueryException` and `RuntimeSQLException`.<br>All of them extends `RuntimeException`.                                                                                                                                                                                  |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `InvalidDocumentClassException` indicates an incorrectly defined document class. With a valid document class declaration, you won't encounter this exception. The most common reason for this exception is the use of a data type not supported by the library as a storage type.                                                                |
+| `InvalidQueryException` indicates an invalid query. Can often be caused by passing an unsupported data type to the `.where()` clause. Note that even if you use a computed field or `@Serializer`, the values passed to the `.where()` clause will not be serialized, you need to pass them in the same type as they are stored in the database. |
+| `RuntimeSQLException` is the only exception that can happen even when the code is correct. Basically, it can occur when there are problems connecting to the database, or when an incorrect request is formed (for example, when passing the name of a non-existent field to the `.where()` clause).                                             |
+
 ### Creating tables
 As was shown earlier, you can easily create new table by calling `database.createTableIfNotExist(YourDocumentHere.class)`, but it is actually just combination of two other methods, which can be used separately: `database.checkIfTableExists(YourDocumentHere.class)` and `database.createTable(YourDocumentHere.class)`.
 Currently, there are no table schema verification, if your code created mysql table, and then you changed its schema in the code, you may get errors.
 
 ### Raw SQL queries
 While using all advantages of KiORM, you still can use raw SQL queries for things, that KiORM can't do. All you need to get JDBC connection and execute any queries is write `database.getConnection()`
+
+### Fixed types and binary/text primary keys
+By default, you can't use text or binary fields as primary key, because MySQL can't index fields of dynamic length. KiORM has fixed types to achieve this.
+
+On fields, which storage type is `String` or `byte[]`, you can add `@Fixed(n)` annotation, where `n` is int, that represents string length for `String` and array length for `byte[]`. Under the hood KiORM would use `CHAR(n)` and `BINARY(n)` sql types to store this fields.
+
+Here is an example:
+```java
+@Document("players")
+class Player {
+    @Field("id") @Fixed(36) @PrimaryKey public String id;
+    @Field("score") public int score;
+}
+
+class Main {
+    public static void main(String[] args) {
+        KiORM database = new KiORM("jdbc:mysql://root@127.0.0.1:3306/dbname");
+        database.createTableIfNotExist(Player.class);
+        Player p = new Player();
+        p.id = "45d01b53-cfc4-4a57-b795-d9cd2a91104c"; // UUID with dashes is always 36 chars long
+        p.score = 100;
+        database.insert(p).exec();
+        p.score += 200;
+        // Since the document has a primary key, it can be used in update and delete queries
+        database.update(p).exec();
+    }
+}
+```
+Fixed types can be used with computed fields and serializers as well.
 
 ### Table/Field name modifiers
 Sometimes we need to specify table name in runtime (for example get it from configuration). Here name modifiers comes:
