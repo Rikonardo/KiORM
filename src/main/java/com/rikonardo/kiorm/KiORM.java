@@ -101,16 +101,25 @@ public class KiORM {
      * @param target Document instance
      * @return {@code UPDATE} query builder
      */
-    public <T> UpdateBuilder<T> update(T target) {
-        return new UpdateBuilder<>(this, target, this.tableNameModifier, this.fieldNameModifier);
+    public <T> UpdateInstanceBuilder<T> update(T target) {
+        return new UpdateInstanceBuilder<>(this, target, this.tableNameModifier, this.fieldNameModifier);
+    }
+
+    /**
+     * Creates DeleteInstanceBuilder to prepare {@code DELETE} query.
+     * @param target Document instance
+     * @return {@code DELETE} query builder
+     */
+    public <T> DeleteInstanceBuilder<T> delete(T target) {
+        return new DeleteInstanceBuilder<>(this, target, this.tableNameModifier, this.fieldNameModifier);
     }
 
     /**
      * Creates DeleteBuilder to prepare {@code DELETE} query.
-     * @param target Document instance
+     * @param target Document class
      * @return {@code DELETE} query builder
      */
-    public <T> DeleteBuilder<T> delete(T target) {
+    public <T> DeleteBuilder<T> delete(Class<T> target) {
         return new DeleteBuilder<>(this, target, this.tableNameModifier, this.fieldNameModifier);
     }
 

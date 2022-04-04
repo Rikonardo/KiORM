@@ -13,13 +13,13 @@ import java.sql.SQLException;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class UpdateBuilder<T> {
+public class UpdateInstanceBuilder<T> {
     private final KiORM db;
     private final T target;
     private final DocumentParser.NameModifier tableNameModifier;
     private final DocumentParser.NameModifier fieldNameModifier;
 
-    public UpdateBuilder(KiORM db, T target, DocumentParser.NameModifier tableNameModifier, DocumentParser.NameModifier fieldNameModifier) {
+    public UpdateInstanceBuilder(KiORM db, T target, DocumentParser.NameModifier tableNameModifier, DocumentParser.NameModifier fieldNameModifier) {
         this.db = db;
         this.target = target;
         this.tableNameModifier = tableNameModifier;

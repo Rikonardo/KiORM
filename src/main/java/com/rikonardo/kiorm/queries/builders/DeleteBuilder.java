@@ -1,46 +1,59 @@
 package com.rikonardo.kiorm.queries.builders;
 
 import com.rikonardo.kiorm.KiORM;
-import com.rikonardo.kiorm.exceptions.InvalidDocumentClassException;
 import com.rikonardo.kiorm.exceptions.InvalidQueryException;
 import com.rikonardo.kiorm.exceptions.RuntimeSQLException;
+import com.rikonardo.kiorm.queries.AbstractQueryOrder;
+import com.rikonardo.kiorm.queries.AbstractQueryWhere;
+import com.rikonardo.kiorm.queries.parts.order.QueryOrderSeveral;
 import com.rikonardo.kiorm.serialization.DocumentParser;
 import com.rikonardo.kiorm.serialization.DocumentSchema;
 import com.rikonardo.kiorm.serialization.SupportedTypes;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class DeleteBuilder<T> {
     private final KiORM db;
-    private final T target;
+    private final Class<T> target;
     private final DocumentParser.NameModifier tableNameModifier;
     private final DocumentParser.NameModifier fieldNameModifier;
 
-    public DeleteBuilder(KiORM db, T target, DocumentParser.NameModifier tableNameModifier, DocumentParser.NameModifier fieldNameModifier) {
+    private AbstractQueryWhere where;
+
+    public DeleteBuilder(KiORM db, Class<T> target, DocumentParser.NameModifier tableNameModifier, DocumentParser.NameModifier fieldNameModifier) {
         this.db = db;
         this.target = target;
         this.tableNameModifier = tableNameModifier;
         this.fieldNameModifier = fieldNameModifier;
     }
 
+    public DeleteBuilder<T> where(AbstractQueryWhere where) {
+        this.where = where;
+        return this;
+    }
+
     public int exec() {
         try {
-            DocumentSchema<T> schema = (DocumentSchema<T>) DocumentParser.schema(this.target.getClass(), this.tableNameModifier, this.fieldNameModifier);
-            Map<String, Object> keys = schema.mapKeysOnly(this.target);
-            if (keys.size() == 0)
-                throw new InvalidDocumentClassException("Document must have primary key in order to be used in delete operations");
-            String query = "DELETE FROM `" + schema.getTable() + "` WHERE " +
-                    keys.keySet().stream().map(k -> "`" + k + "` = ?").collect(Collectors.joining(", ")) + ";";
+            DocumentSchema<T> schema = DocumentParser.schema(this.target, this.tableNameModifier, this.fieldNameModifier);
+            String query = "DELETE FROM `" + schema.getTable() + "`";
+            List<Object> values = new ArrayList<>();
+            if (this.where != null) {
+                query += " WHERE " + this.where.compile();
+                values.addAll(this.where.compileValues());
+            }
+            query += ";";
 
             PreparedStatement preparedStatement = db.getConnection().prepareStatement(query);
             int i = 1;
-            for (String key : keys.keySet()) {
-                SupportedTypes.SupportedType type = schema.getFieldType(key);
-                if (type == null) throw new InvalidQueryException("Query contains value of unsupported type " + keys.get(key).getClass().getName());
-                type.write(preparedStatement, i, keys.get(key));
+            for (Object value : values) {
+                SupportedTypes.SupportedType type = SupportedTypes.getAnyFieldType(value.getClass());
+                if (type == null) throw new InvalidQueryException("Query contains value of unsupported type " + value.getClass().getName());
+                type.write(preparedStatement, i, value);
                 i++;
             }
 

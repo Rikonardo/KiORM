@@ -253,12 +253,10 @@ This is where the `FieldSerializer<R, S>` interface comes. It has two generic ty
 Just create a class that implements this interface and pass it in the `@Serializer` annotation on the desired field:
 ```java
 class CoolIdSerializer implements FieldSerializer<CoolIdClass, Long> {
-    @Override
     public Long serialize(CoolIdClass id) {
         return id.getAsLong();
     }
 
-    @Override
     public CoolIdClass deserialize(Long id) {
         return new CoolIdClass(id);
     }
@@ -271,6 +269,8 @@ class Item {
 }
 ```
 As you see, we are using `Long` instead of `long` here. KiORM would automatically care about object <-> primitive converting.
+
+You can also combine serializer with computed field. 
 
 ### Exceptions
 
