@@ -131,7 +131,7 @@ public class KiORM {
     public <T> boolean checkIfTableExists(Class<T> target) {
         try {
             DocumentSchema<T> schema = DocumentParser.schema(target, this.tableNameModifier, this.fieldNameModifier);
-            String query = "SELECT count(*) FROM information_schema.tables WHERE table_name = '" + schema.getTable() + "' LIMIT 1;";
+            String query = "SELECT count(*) FROM information_schema.tables WHERE table_name = '" + schema.getTable() + "' AND table_schema = '" + connection.getCatalog() + "' LIMIT 1;";
             PreparedStatement preparedStatement = this.connection.prepareStatement(query);
             ResultSet rs = preparedStatement.executeQuery();
             int records = 0;
