@@ -106,6 +106,15 @@ public class KiORM {
     }
 
     /**
+     * Creates UpdateBuilder to prepare {@code UPDATE} query.
+     * @param target Document class
+     * @return {@code UPDATE} query builder
+     */
+    public <T> UpdateBuilder<T> update(Class<T> target) {
+        return new UpdateBuilder<>(this, target, this.tableNameModifier, this.fieldNameModifier);
+    }
+
+    /**
      * Creates DeleteInstanceBuilder to prepare {@code DELETE} query.
      * @param target Document instance
      * @return {@code DELETE} query builder
