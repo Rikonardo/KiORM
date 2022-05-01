@@ -20,6 +20,12 @@ public class SerializerMiddleware {
     }
 
     public SerializerMiddleware(Class<?> realType, Class<? extends FieldSerializer<?, ?>> serializer, Fixed fixed) {
+        if (serializer == null) {
+            Serializer annotation = realType.getAnnotation(Serializer.class);
+            if (annotation != null) {
+                serializer = annotation.value();
+            }
+        }
         this.serializerClass = serializer;
         this.realType = realType;
         if (serializer == null) {

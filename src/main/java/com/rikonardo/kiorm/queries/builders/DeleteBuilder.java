@@ -43,8 +43,8 @@ public class DeleteBuilder<T> {
             String query = "DELETE FROM `" + schema.getTable() + "`";
             List<Object> values = new ArrayList<>();
             if (this.where != null) {
-                query += " WHERE " + this.where.compile();
-                values.addAll(this.where.compileValues());
+                query += " WHERE " + this.where.compile(schema);
+                values.addAll(this.where.compileValues(schema));
             }
             query += ";";
 

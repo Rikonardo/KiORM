@@ -14,11 +14,15 @@ public class DocumentSchema<T> {
     @Getter private final Class<T> type;
     @Getter private final String table;
     @Getter private final List<DocumentParser.DocumentField> fields;
+    @Getter private final DocumentParser.NameModifier tableNameModifier;
+    @Getter private final DocumentParser.NameModifier fieldNameModifier;
 
-    public DocumentSchema(Class<T> type, String table, List<DocumentParser.DocumentField> fields) {
+    public DocumentSchema(Class<T> type, String table, List<DocumentParser.DocumentField> fields, DocumentParser.NameModifier tableNameModifier, DocumentParser.NameModifier fieldNameModifier) {
         this.type = type;
         this.table = table;
         this.fields = fields;
+        this.tableNameModifier = tableNameModifier;
+        this.fieldNameModifier = fieldNameModifier;
     }
 
     public T fromResultSet(ResultSet rs) throws SQLException {
@@ -78,5 +82,17 @@ public class DocumentSchema<T> {
             if (field.getName().equals(name))
                 return field.getSerializer().getStorageType();
         return null;
+    }
+
+    public String toStorageFieldName(String name) {
+        return fieldNameModifier == null ? name : fieldNameModifier.method(name, type);
+    }
+
+    public Object toStorageFieldValue(String name, Object value) {
+        String fieldName = toStorageFieldName(name);
+        for (DocumentParser.DocumentField field : fields)
+            if (field.getName().equals(fieldName))
+                return field.getSerializer().serialize(value);
+        return value;
     }
 }

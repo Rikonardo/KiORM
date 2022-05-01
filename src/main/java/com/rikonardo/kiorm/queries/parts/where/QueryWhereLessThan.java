@@ -1,6 +1,7 @@
 package com.rikonardo.kiorm.queries.parts.where;
 
 import com.rikonardo.kiorm.queries.AbstractQueryWhere;
+import com.rikonardo.kiorm.serialization.DocumentSchema;
 import lombok.AllArgsConstructor;
 
 import java.util.Collections;
@@ -12,12 +13,12 @@ public class QueryWhereLessThan extends AbstractQueryWhere {
     private final Object value;
 
     @Override
-    public String compile() {
-        return "`" + field + "` < ?";
+    public String compile(DocumentSchema<?> schema) {
+        return "`" + schema.toStorageFieldName(field) + "` < ?";
     }
 
     @Override
-    public List<Object> compileValues() {
-        return Collections.singletonList(value);
+    public List<Object> compileValues(DocumentSchema<?> schema) {
+        return Collections.singletonList(schema.toStorageFieldValue(field, value));
     }
 }

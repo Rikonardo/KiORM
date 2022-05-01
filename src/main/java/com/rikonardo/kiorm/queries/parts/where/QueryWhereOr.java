@@ -2,6 +2,7 @@ package com.rikonardo.kiorm.queries.parts.where;
 
 import com.rikonardo.kiorm.queries.AbstractQuery;
 import com.rikonardo.kiorm.queries.AbstractQueryWhere;
+import com.rikonardo.kiorm.serialization.DocumentSchema;
 import lombok.AllArgsConstructor;
 
 import java.util.ArrayList;
@@ -13,15 +14,15 @@ public class QueryWhereOr extends AbstractQueryWhere {
     private final List<AbstractQueryWhere> queries;
 
     @Override
-    public String compile() {
-        return "(" + queries.stream().map(AbstractQuery::compile).collect(Collectors.joining(") OR (")) + ")";
+    public String compile(DocumentSchema<?> schema) {
+        return "(" + queries.stream().map(el -> el.compile(schema)).collect(Collectors.joining(") OR (")) + ")";
     }
 
     @Override
-    public List<Object> compileValues() {
+    public List<Object> compileValues(DocumentSchema<?> schema) {
         List<Object> values = new ArrayList<>();
         for (AbstractQueryWhere q : queries)
-            values.addAll(q.compileValues());
+            values.addAll(q.compileValues(schema));
         return values;
     }
 }

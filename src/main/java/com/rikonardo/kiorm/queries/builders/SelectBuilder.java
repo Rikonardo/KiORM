@@ -67,11 +67,11 @@ public class SelectBuilder<T> {
             String query = "SELECT * FROM `" + schema.getTable() + "`";
             List<Object> values = new ArrayList<>();
             if (this.where != null) {
-                query += " WHERE " + this.where.compile();
-                values.addAll(this.where.compileValues());
+                query += " WHERE " + this.where.compile(schema);
+                values.addAll(this.where.compileValues(schema));
             }
             if (this.order != null) {
-                query += " ORDER BY " + this.order.compile();
+                query += " ORDER BY " + this.order.compile(schema);
             }
             if (this.limitSkip >= 0) {
                 query += " LIMIT " + this.limitSkip + ", " + this.limitCount;

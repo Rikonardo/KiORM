@@ -113,7 +113,7 @@ public class DocumentParser {
             }
         }
 
-        DocumentSchema<T> schema = new DocumentSchema<>(clazz, tableName, fields);
+        DocumentSchema<T> schema = new DocumentSchema<>(clazz, tableName, fields, tableNameModifier, fieldNameModifier);
         if (cacheEnabled)
             cache.add(new CachedDocumentSchema<>(clazz, tableNameModifier, fieldNameModifier, schema));
         return schema;

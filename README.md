@@ -22,7 +22,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.rikonardo.kiorm:KiORM:1.0.0-SNAPSHOT'
+    implementation 'com.rikonardo.kiorm:KiORM:1.1.0-SNAPSHOT'
 }
 ```
 Maven:
@@ -40,7 +40,7 @@ Maven:
         <dependency>
             <groupId>com.rikonardo.kiorm</groupId>
             <artifactId>KiORM</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
+            <version>1.1.0-SNAPSHOT</version>
         </dependency>
     </dependencies>
 </project>
@@ -173,7 +173,7 @@ class Main {
     }
 }
 ```
-INSERT, UPDATE and DELETE queries does not support any clauses. There also COUNT query, which supports `.where()` clause and can be used to count documents in table:
+INSERT query does not support any clauses. There also COUNT query, which supports `.where()` clause and can be used to count documents in table:
 ```java
 class Main {
     public static void main(String[] args) {
@@ -196,7 +196,7 @@ class Main {
 }
 ```
 
-**❗ Important: KiORM currently does not serialize values, passed to `.where()` clause. It also does not apply field name modifier to field names, passed to `.where()` and `.order()` clauses. You need to serialize values and apply name modifiers by yourself.**
+**❗ Important: KiORM will automatically serialize values, passed to `.where()` clause. It also applies field name modifier to field names, passed to `.where()` and `.order()` clauses.**
 
 ### Computed fields
 Sometimes we need to go beyond primitive types and store something more complicated, like JSON or player UUID. KiORM provides two different way to achieve this, and computed fields is the first one.
@@ -269,6 +269,27 @@ class Item {
 }
 ```
 As you see, we are using `Long` instead of `long` here. KiORM would automatically care about object <-> primitive converting.
+
+Serializers can also be applied to class, instances of which are stored in the database:
+```java
+@Serializer(CoolIdSerializer.class)
+class CoolIdClass {
+    private final long id;
+
+    public CoolIdClass(long id) {
+        this.id = id;
+    }
+
+    public long getAsLong() {
+        return this.id;
+    }
+}
+
+@Document("items")
+class Item {
+    @PrimaryKey @AutoIncrement @Field("id") public CoolIdClass id;
+}
+```
 
 You can also combine serializer with computed field. 
 

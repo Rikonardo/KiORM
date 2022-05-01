@@ -49,11 +49,11 @@ public class UpdateBuilder<T> {
             DocumentSchema<T> schema = DocumentParser.schema(this.target, this.tableNameModifier, this.fieldNameModifier);
             List<Object> values = new ArrayList<>();
             String query = "UPDATE `" + schema.getTable() + "` SET " +
-                    fields.keySet().stream().map(k -> { values.add(fields.get(k)); return "`" + k + "` = ?"; }).collect(Collectors.joining(", "));
+                    fields.keySet().stream().map(k -> { values.add(schema.toStorageFieldValue(k, fields.get(k))); return "`" + schema.toStorageFieldName(k) + "` = ?"; }).collect(Collectors.joining(", "));
 
             if (this.where != null) {
-                query += " WHERE " + this.where.compile();
-                values.addAll(this.where.compileValues());
+                query += " WHERE " + this.where.compile(schema);
+                values.addAll(this.where.compileValues(schema));
             }
             query += ";";
 
