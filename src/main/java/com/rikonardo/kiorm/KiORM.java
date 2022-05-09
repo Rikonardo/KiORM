@@ -4,6 +4,7 @@ import com.rikonardo.kiorm.exceptions.RuntimeSQLException;
 import com.rikonardo.kiorm.queries.builders.*;
 import com.rikonardo.kiorm.serialization.DocumentParser;
 import com.rikonardo.kiorm.serialization.DocumentSchema;
+import com.rikonardo.kiorm.transactions.TransactionBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -11,7 +12,9 @@ import com.rikonardo.kiorm.annotations.*;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @NoArgsConstructor
@@ -75,7 +78,16 @@ public class KiORM {
      * @return {@code SELECT} query builder
      */
     public <T> SelectBuilder<T> select(Class<T> target) {
-        return new SelectBuilder<>(this, target, this.tableNameModifier, this.fieldNameModifier);
+        return new SelectBuilder<>(this, target, this.tableNameModifier, this.fieldNameModifier, null);
+    }
+
+    /**
+     * Creates SelectOneBuilder to prepare {@code SELECT} query that selects only first match or null.
+     * @param target Document class
+     * @return {@code SELECT} query builder
+     */
+    public <T> SelectOneBuilder<T> selectOne(Class<T> target) {
+        return new SelectOneBuilder<>(this, target, this.tableNameModifier, this.fieldNameModifier, null);
     }
 
     /**
@@ -84,7 +96,7 @@ public class KiORM {
      * @return {@code SELECT COUNT(*)} query builder
      */
     public <T> CountBuilder<T> count(Class<T> target) {
-        return new CountBuilder<>(this, target, this.tableNameModifier, this.fieldNameModifier);
+        return new CountBuilder<>(this, target, this.tableNameModifier, this.fieldNameModifier, null);
     }
 
     /**
@@ -93,7 +105,7 @@ public class KiORM {
      * @return {@code INSERT} query builder
      */
     public <T> InsertBuilder<T> insert(T target) {
-        return new InsertBuilder<>(this, target, this.tableNameModifier, this.fieldNameModifier);
+        return new InsertBuilder<>(this, target, this.tableNameModifier, this.fieldNameModifier, null);
     }
 
     /**
@@ -102,7 +114,7 @@ public class KiORM {
      * @return {@code UPDATE} query builder
      */
     public <T> UpdateInstanceBuilder<T> update(T target) {
-        return new UpdateInstanceBuilder<>(this, target, this.tableNameModifier, this.fieldNameModifier);
+        return new UpdateInstanceBuilder<>(this, target, this.tableNameModifier, this.fieldNameModifier, null);
     }
 
     /**
@@ -111,7 +123,7 @@ public class KiORM {
      * @return {@code UPDATE} query builder
      */
     public <T> UpdateBuilder<T> update(Class<T> target) {
-        return new UpdateBuilder<>(this, target, this.tableNameModifier, this.fieldNameModifier);
+        return new UpdateBuilder<>(this, target, this.tableNameModifier, this.fieldNameModifier, null);
     }
 
     /**
@@ -120,7 +132,7 @@ public class KiORM {
      * @return {@code DELETE} query builder
      */
     public <T> DeleteInstanceBuilder<T> delete(T target) {
-        return new DeleteInstanceBuilder<>(this, target, this.tableNameModifier, this.fieldNameModifier);
+        return new DeleteInstanceBuilder<>(this, target, this.tableNameModifier, this.fieldNameModifier, null);
     }
 
     /**
@@ -129,7 +141,15 @@ public class KiORM {
      * @return {@code DELETE} query builder
      */
     public <T> DeleteBuilder<T> delete(Class<T> target) {
-        return new DeleteBuilder<>(this, target, this.tableNameModifier, this.fieldNameModifier);
+        return new DeleteBuilder<>(this, target, this.tableNameModifier, this.fieldNameModifier, null);
+    }
+
+    /**
+     * Creates TransactionBuilder.
+     * @return Transaction builder
+     */
+    public TransactionBuilder transaction() {
+        return new TransactionBuilder(this, this.tableNameModifier, this.fieldNameModifier);
     }
 
     /**
@@ -160,11 +180,30 @@ public class KiORM {
         try {
             DocumentSchema<T> schema = DocumentParser.schema(target, this.tableNameModifier, this.fieldNameModifier);
             List<String> keys = new ArrayList<>();
+            List<String> singleUniques = new ArrayList<>();
+            Map<String, List<String>> groupUniques = new HashMap<>();
+            for (DocumentParser.DocumentField field : schema.getFields()) {
+                if (field.getUniqueKey() == null) continue;
+                if (field.getUniqueKey().isEmpty()) {
+                    singleUniques.add(field.getName());
+                } else {
+                    if (!groupUniques.containsKey(field.getUniqueKey()))
+                        groupUniques.put(field.getUniqueKey(), new ArrayList<>());
+                    groupUniques.get(field.getUniqueKey()).add(field.getName());
+                }
+            }
             String query = "CREATE TABLE `" + schema.getTable() + "` (" +
                     schema.getFields().stream().map(field -> {
                         if (field.isPrimaryKey()) keys.add(field.getName());
                         return "`" + field.getName() + "` " + field.getSerializer().getStorageType().getSqlName() + " NOT NULL" + (field.isAutoIncrement() ? " AUTO_INCREMENT" : "");
-                    }).collect(Collectors.joining(", ")) + (keys.size() > 0 ? ", PRIMARY KEY (" + keys.stream().map(k -> "`" + k + "`").collect(Collectors.joining(", ")) + ")" : "") + ");";
+                    }).collect(Collectors.joining(", "))
+                    + (keys.size() > 0 ? ", PRIMARY KEY (" + keys.stream().map(k -> "`" + k + "`").collect(Collectors.joining(", ")) + ")" : "")
+                    + (singleUniques.size() > 0 ? ", UNIQUE (" + singleUniques.stream().map(k -> "`" + k + "`").collect(Collectors.joining(", ")) + ")" : "")
+                    + groupUniques.keySet().stream().map(key -> {
+                        List<String> uniques = groupUniques.get(key);
+                        return ", CONSTRAINT `" + key + "` UNIQUE (" + uniques.stream().map(k -> "`" + k + "`").collect(Collectors.joining(", ")) + ")";
+                    }).collect(Collectors.joining(""))
+                    + ");";
             this.connection.prepareStatement(query).executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeSQLException(e);

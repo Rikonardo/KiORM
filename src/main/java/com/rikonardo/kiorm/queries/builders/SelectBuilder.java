@@ -9,6 +9,7 @@ import com.rikonardo.kiorm.queries.parts.order.QueryOrderSeveral;
 import com.rikonardo.kiorm.serialization.DocumentParser;
 import com.rikonardo.kiorm.serialization.DocumentSchema;
 import com.rikonardo.kiorm.serialization.SupportedTypes;
+import com.rikonardo.kiorm.transactions.TransactionBuilder;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -17,7 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class SelectBuilder<T> {
+public class SelectBuilder<T> implements QueryBuilder.ReturnsList {
     private final KiORM db;
     private final Class<T> target;
     private final DocumentParser.NameModifier tableNameModifier;
@@ -27,11 +28,14 @@ public class SelectBuilder<T> {
     private AbstractQueryOrder order;
     private int limitSkip = -1, limitCount = -1;
 
-    public SelectBuilder(KiORM db, Class<T> target, DocumentParser.NameModifier tableNameModifier, DocumentParser.NameModifier fieldNameModifier) {
+    private final TransactionBuilder transaction;
+
+    public SelectBuilder(KiORM db, Class<T> target, DocumentParser.NameModifier tableNameModifier, DocumentParser.NameModifier fieldNameModifier, TransactionBuilder transaction) {
         this.db = db;
         this.target = target;
         this.tableNameModifier = tableNameModifier;
         this.fieldNameModifier = fieldNameModifier;
+        this.transaction = transaction;
     }
 
     public SelectBuilder<T> where(AbstractQueryWhere where) {
@@ -62,6 +66,7 @@ public class SelectBuilder<T> {
     }
 
     public List<T> exec() {
+        if (transaction != null && !transaction.isRunning()) return new ArrayList<>();
         try {
             DocumentSchema<T> schema = DocumentParser.schema(this.target, this.tableNameModifier, this.fieldNameModifier);
             String query = "SELECT * FROM `" + schema.getTable() + "`";
@@ -87,6 +92,11 @@ public class SelectBuilder<T> {
                 if (type == null) throw new InvalidQueryException("Query contains value of unsupported type " + value.getClass().getName());
                 type.write(preparedStatement, i, value);
                 i++;
+            }
+
+            if (transaction != null) {
+                preparedStatement.execute();
+                return new ArrayList<>();
             }
 
             ResultSet rs = preparedStatement.executeQuery();

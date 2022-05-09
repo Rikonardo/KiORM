@@ -22,7 +22,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.rikonardo.kiorm:KiORM:1.1.0-SNAPSHOT'
+    implementation 'com.rikonardo.kiorm:KiORM:1.2.0-SNAPSHOT'
 }
 ```
 Maven:
@@ -40,7 +40,7 @@ Maven:
         <dependency>
             <groupId>com.rikonardo.kiorm</groupId>
             <artifactId>KiORM</artifactId>
-            <version>1.1.0-SNAPSHOT</version>
+            <version>1.2.0-SNAPSHOT</version>
         </dependency>
     </dependencies>
 </project>

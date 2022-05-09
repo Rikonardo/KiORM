@@ -7,26 +7,31 @@ import com.rikonardo.kiorm.exceptions.RuntimeSQLException;
 import com.rikonardo.kiorm.serialization.DocumentParser;
 import com.rikonardo.kiorm.serialization.DocumentSchema;
 import com.rikonardo.kiorm.serialization.SupportedTypes;
+import com.rikonardo.kiorm.transactions.TransactionBuilder;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class DeleteInstanceBuilder<T> {
+public class DeleteInstanceBuilder<T> implements QueryBuilder.ReturnsInt {
     private final KiORM db;
     private final T target;
     private final DocumentParser.NameModifier tableNameModifier;
     private final DocumentParser.NameModifier fieldNameModifier;
 
-    public DeleteInstanceBuilder(KiORM db, T target, DocumentParser.NameModifier tableNameModifier, DocumentParser.NameModifier fieldNameModifier) {
+    private final TransactionBuilder transaction;
+
+    public DeleteInstanceBuilder(KiORM db, T target, DocumentParser.NameModifier tableNameModifier, DocumentParser.NameModifier fieldNameModifier, TransactionBuilder transaction) {
         this.db = db;
         this.target = target;
         this.tableNameModifier = tableNameModifier;
         this.fieldNameModifier = fieldNameModifier;
+        this.transaction = transaction;
     }
 
     public int exec() {
+        if (transaction != null && !transaction.isRunning()) return 0;
         try {
             DocumentSchema<T> schema = (DocumentSchema<T>) DocumentParser.schema(this.target.getClass(), this.tableNameModifier, this.fieldNameModifier);
             Map<String, Object> keys = schema.mapKeysOnly(this.target);
@@ -42,6 +47,11 @@ public class DeleteInstanceBuilder<T> {
                 if (type == null) throw new InvalidQueryException("Query contains value of unsupported type " + keys.get(key).getClass().getName());
                 type.write(preparedStatement, i, keys.get(key));
                 i++;
+            }
+
+            if (transaction != null) {
+                preparedStatement.execute();
+                return 0;
             }
 
             return preparedStatement.executeUpdate();

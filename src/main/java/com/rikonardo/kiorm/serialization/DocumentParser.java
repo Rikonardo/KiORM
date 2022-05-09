@@ -45,8 +45,9 @@ public class DocumentParser {
 
             boolean isPrimaryKey = classField.getAnnotation(PrimaryKey.class) != null;
             boolean isAutoIncrement = classField.getAnnotation(AutoIncrement.class) != null;
+            Unique unique = classField.getAnnotation(Unique.class);
             if (isAutoIncrement && !isPrimaryKey) throw new InvalidDocumentClassException("@AutoIncrement used without @PrimaryKey at field " + fieldName);
-            fields.add(new StandardDocumentField(fieldName, new SerializerMiddleware(classField.getType(), classField.getAnnotation(Serializer.class), classField.getAnnotation(Fixed.class)), isPrimaryKey, isAutoIncrement, classField));
+            fields.add(new StandardDocumentField(fieldName, new SerializerMiddleware(classField.getType(), classField.getAnnotation(Serializer.class), classField.getAnnotation(Fixed.class)), isPrimaryKey, isAutoIncrement, unique == null ? null : unique.value(), classField));
         }
 
         Method[] classMethods = clazz.getDeclaredMethods();
@@ -71,7 +72,8 @@ public class DocumentParser {
             if (field == null) {
                 boolean isPrimaryKey = classMethod.getAnnotation(PrimaryKey.class) != null;
                 boolean isAutoIncrement = classMethod.getAnnotation(AutoIncrement.class) != null;
-                ComputedDocumentField cfield = new ComputedDocumentField(fieldName, new SerializerMiddleware(type, classMethod.getAnnotation(Serializer.class), classMethod.getAnnotation(Fixed.class)), isPrimaryKey, isAutoIncrement);
+                Unique unique = classMethod.getAnnotation(Unique.class);
+                ComputedDocumentField cfield = new ComputedDocumentField(fieldName, new SerializerMiddleware(type, classMethod.getAnnotation(Serializer.class), classMethod.getAnnotation(Fixed.class)), isPrimaryKey, isAutoIncrement, unique == null ? null : unique.value());
                 if (isSetter) cfield.setSetter(classMethod);
                 else cfield.setGetter(classMethod);
                 fields.add(cfield);
@@ -87,6 +89,12 @@ public class DocumentParser {
                     if (cfield.getGetter() != null) throw new InvalidDocumentClassException("Getter for field " + fieldName + " specified twice");
                     cfield.setGetter(classMethod);
                 }
+                boolean isPrimaryKey = classMethod.getAnnotation(PrimaryKey.class) != null;
+                boolean isAutoIncrement = classMethod.getAnnotation(AutoIncrement.class) != null;
+                Unique unique = classMethod.getAnnotation(Unique.class);
+                if (!cfield.isPrimaryKey() && isPrimaryKey) cfield.setPrimaryKey(true);
+                if (!cfield.isAutoIncrement() && isAutoIncrement) cfield.setAutoIncrement(true);
+                if (cfield.getUniqueKey() == null && unique != null) cfield.setUniqueKey(unique.value());
                 Serializer serializer = classMethod.getAnnotation(Serializer.class);
                 Fixed fixed = classMethod.getAnnotation(Fixed.class);
                 if (
@@ -127,15 +135,17 @@ public class DocumentParser {
 
     public static abstract class DocumentField {
         @Getter private final String name;
-        @Getter private final boolean isPrimaryKey;
-        @Getter private final boolean isAutoIncrement;
+        @Getter @Setter private boolean isPrimaryKey;
+        @Getter @Setter private boolean isAutoIncrement;
+        @Getter @Setter private String uniqueKey;
         @Getter @Setter private SerializerMiddleware serializer;
 
-        protected DocumentField(String name, SerializerMiddleware serializer, boolean isPrimaryKey, boolean isAutoIncrement) {
+        protected DocumentField(String name, SerializerMiddleware serializer, boolean isPrimaryKey, boolean isAutoIncrement, String uniqueKey) {
             this.name = name;
             this.serializer = serializer;
             this.isPrimaryKey = isPrimaryKey;
             this.isAutoIncrement = isAutoIncrement;
+            this.uniqueKey = uniqueKey;
         }
 
         public abstract Object read(Object instance) throws IllegalAccessException, InvocationTargetException;
@@ -145,8 +155,8 @@ public class DocumentParser {
     public static class StandardDocumentField extends DocumentField {
         @Getter private final Field reflectField;
 
-        private StandardDocumentField(String name, SerializerMiddleware serializer, boolean isPrimaryKey, boolean isAutoIncrement, Field reflectField) {
-            super(name, serializer, isPrimaryKey, isAutoIncrement);
+        private StandardDocumentField(String name, SerializerMiddleware serializer, boolean isPrimaryKey, boolean isAutoIncrement, String uniqueKey, Field reflectField) {
+            super(name, serializer, isPrimaryKey, isAutoIncrement, uniqueKey);
             this.reflectField = reflectField;
         }
 
@@ -165,8 +175,8 @@ public class DocumentParser {
         @Getter @Setter private Method getter;
         @Getter @Setter private Method setter;
 
-        private ComputedDocumentField(String name, SerializerMiddleware serializer, boolean isPrimaryKey, boolean isAutoIncrement) {
-            super(name, serializer, isPrimaryKey, isAutoIncrement);
+        private ComputedDocumentField(String name, SerializerMiddleware serializer, boolean isPrimaryKey, boolean isAutoIncrement, String uniqueKey) {
+            super(name, serializer, isPrimaryKey, isAutoIncrement, uniqueKey);
         }
 
         @Override
