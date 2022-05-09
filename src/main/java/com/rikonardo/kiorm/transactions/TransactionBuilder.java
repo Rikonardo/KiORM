@@ -113,7 +113,7 @@ public class TransactionBuilder {
             for (TransactionUnit unit : units) {
                 unit.execute();
             }
-            database.getConnection().commit();
+            database.getConnection().setAutoCommit(true);
         } catch (SQLException e) {
             throw new RuntimeSQLException(e);
         }
